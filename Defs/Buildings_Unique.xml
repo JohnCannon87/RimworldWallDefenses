@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+    <ThingDef ParentName="WallBuildingBase">
+        <defName>WallShield</defName>
+        <label>wall shield</label>
+        <description>A small wall mounted shield unit.</description>
+        <graphicData>
+            <texPath>WallShield/WallShield</texPath>
+            <graphicClass>Graphic_Multi</graphicClass>
+        </graphicData>
+        <thingCategories>
+            <li>BuildingsSecurity</li>
+        </thingCategories>
+        <uiIconPath>WallShield/WallShield_UI</uiIconPath>
+        <costList>
+            <Gold>250</Gold>
+            <Plasteel>200</Plasteel>
+            <Silver>200</Silver>
+            <ComponentSpacer>15</ComponentSpacer>
+        </costList>
+        <building>
+            <isEdifice>false</isEdifice>
+        </building>
+        <statBases>
+            <WorkToBuild>3000</WorkToBuild>
+            <MaxHitPoints>1000</MaxHitPoints>
+            <Flammability>1.0</Flammability>
+            <Mass>35</Mass>
+        </statBases>
+        <tickerType>Normal</tickerType>
+        <researchPrerequisites>
+            <li>WallShield</li>
+        </researchPrerequisites>
+        <comps>
+            <li Class="CompProperties_Power">
+                <compClass>CompPowerTrader</compClass>
+                <basePowerConsumption>1</basePowerConsumption>
+            </li>
+            <li Class="CompProperties_Breakdownable"/>
+            <li Class="CompProperties_Flickable"/>
+            <li Class="WallShields.CompProperties_WallMountedShieldEmitterComp"/>
+        </comps>
+        <placeWorkers>
+            <li>WallStuff.PlaceWorker_WallObject</li>
+            <li>WallStuff.PlaceWorker_WallChecker</li>
+        </placeWorkers>
+        <designationCategory>Security</designationCategory>
+        <constructionSkillPrerequisite>18</constructionSkillPrerequisite>
+        <clearBuildingArea>false</clearBuildingArea>
+        <drawPlaceWorkersWhileSelected>true</drawPlaceWorkersWhileSelected>
+        <altitudeLayer>PawnUnused</altitudeLayer>
+        <castEdgeShadows>false</castEdgeShadows>
+        <minifiedDef>MinifiedThing</minifiedDef>
+        <passability>Impassable</passability>
+    </ThingDef>
+
+</Defs>
