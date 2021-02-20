@@ -4,7 +4,7 @@
     <ThingDef ParentName="WallBuildingBase">
         <defName>WallMountedAATurret</defName>
         <label>AA Turret</label>
-        <description>A small wall mounted shield unit.</description>
+        <description>Anti-Air Turret designed to destroy incoming targets.</description>
         <graphicData>
             <texPath>AATurret/AATurret</texPath>
             <graphicClass>Graphic_Single</graphicClass>

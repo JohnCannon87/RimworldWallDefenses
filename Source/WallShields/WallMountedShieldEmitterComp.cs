@@ -154,10 +154,15 @@ namespace WallShields
         }
 
 
-        private void SetPowerLevel(int numberOfShieldCellsActive)
+        private void SetPowerLevel()
+        {
+            SetPowerLevel(PowerUsage);
+        }
+
+        private void SetPowerLevel(float powerLevel)
         {
             CompPowerTrader comp = this.parent.GetComp<CompPowerTrader>();
-            comp.PowerOutput = PowerUsage;
+            comp.PowerOutput = powerLevel;
         }
 
         private bool IsActive()
@@ -177,7 +182,7 @@ namespace WallShields
 
         private void ShieldThings()
         {
-            SetPowerLevel(shieldEdgeCells.Count());
+            SetPowerLevel();
 
             foreach (IntVec3 cell in shieldEdgeCells)
             {
