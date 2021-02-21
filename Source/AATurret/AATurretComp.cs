@@ -70,11 +70,11 @@ namespace WallShields
 
             List<Thing> targetsInRange = targets.Where<Thing>(t => t.Position.InHorDistOf(this.parent.Position, this.range)).ToList();
 
-            List<Thing> targetsToShootAt = targetsInRange.Shuffle().Take(Math.Max(ammoRemaining, targetsInRange.Count())).ToList();
+            List<Thing> targetsToShootAt = targetsInRange.Shuffle().Take(Math.Max(ammoRemaining, targetsInRange.Count())).Where(t => IsThingAThreateningDropPodOrNotADropPod(t)).ToList();
 
             foreach (Thing thing in targetsToShootAt)
             {
-                if (IsThingNotDropPod(thing) || ShouldDestroyDropPod())
+                if (IsThingNotADropPod(thing) || ShouldDestroyDropPod())
                 {
                     DestroyThing(thing);
                 }
@@ -88,12 +88,16 @@ namespace WallShields
             tickCount = 0;
         }
 
+        private bool IsThingAThreateningDropPodOrNotADropPod(Thing thing)
+        {
+            return !(thing is DropPodIncoming) || (thing is DropPodIncoming) && IsPodAThreat((DropPodIncoming)thing);
+        }
         private bool ShouldDestroyDropPod()
         {
             return Rand.RangeInclusive(0, 100) <= WallShieldsSettings.chanceOfCompletelyDestroyingDropPod;
         }
 
-        private bool IsThingNotDropPod(Thing thing)
+        private bool IsThingNotADropPod(Thing thing)
         {
             return !(thing is DropPodIncoming);
         }
@@ -109,7 +113,7 @@ namespace WallShields
 
         private void DamageDropPod(DropPodIncoming pod)
         {
-            if (pod.Contents.innerContainer.Any((Thing t) => t.Faction.HostileTo(Faction.OfPlayer)))
+            if (IsPodAThreat(pod))
             {
                 MakeShrapnelPlaySoundAndAimAtTarget(pod, 1);
                 int i = 0;
@@ -118,6 +122,11 @@ namespace WallShields
                     InjureOccupant(occupant);
                 }
             }
+        }
+
+        private static bool IsPodAThreat(DropPodIncoming pod)
+        {
+            return pod.Contents.innerContainer.Any((Thing t) => t.Faction.HostileTo(Faction.OfPlayer));
         }
 
         private void MakeShrapnelPlaySoundAndAimAtTarget(Thing target, int shrapnelCount)
