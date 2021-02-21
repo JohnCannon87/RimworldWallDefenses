@@ -19,14 +19,6 @@ namespace WallShields
 
 		private bool idleTurnClockwise;
 
-		private const float IdleTurnDegreesPerTick = 0.26f;
-
-		private const int IdleTurnDuration = 140;
-
-		private const int IdleTurnIntervalMin = 150;
-
-		private const int IdleTurnIntervalMax = 350;
-
 		public static readonly int ArtworkRotation = -90;
 
 		public float CurRotation

@@ -14,6 +14,9 @@ namespace WallShields
         internal static int protectionRange = 55;
         internal static int reloadSpeed = 120;
         internal static int ammoCount = 2;
+        internal static int maxShotsAtDropPodOccupant = 3;
+        internal static float bulletDamage = 10;
+        internal static int chanceOfCompletelyDestroyingDropPod = 100;
 
         public override void ExposeData()
         {
@@ -25,6 +28,9 @@ namespace WallShields
             Scribe_Values.Look(ref protectionRange, "protectionRange");
             Scribe_Values.Look(ref reloadSpeed, "reloadSpeed");
             Scribe_Values.Look(ref ammoCount, "ammoCount");
+            Scribe_Values.Look(ref chanceOfCompletelyDestroyingDropPod, "chanceOfCompletelyDestroyingDropPod");
+            Scribe_Values.Look(ref bulletDamage, "bulletDamage");
+            Scribe_Values.Look(ref maxShotsAtDropPodOccupant, "maxShotsAtDropPodOccupant");
 
         }
     }

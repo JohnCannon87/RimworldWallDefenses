@@ -45,14 +45,25 @@ namespace WallShields
 
             list.Label("Shield total power calculation is ('Cells Covered' ^ 'Cell Exponent') * power per cell");
 
-            list.Label("AA Turret - Protection Range Value: " + WallShieldsSettings.protectionRange);
-            WallShieldsSettings.protectionRange = list.Slider(WallShieldsSettings.protectionRange, 1, 100).RoundToAsInt(1);
+            list.Label("AA Turret - Protection Range Value (56 Max range as that's the largest target area the game can draw): " + WallShieldsSettings.protectionRange);
+            WallShieldsSettings.protectionRange = list.Slider(WallShieldsSettings.protectionRange, 1, 56).RoundToAsInt(1);
 
             list.Label("AA Turret - Reload Speed (in ticks) Value: " + WallShieldsSettings.reloadSpeed);
             WallShieldsSettings.reloadSpeed = list.Slider(WallShieldsSettings.reloadSpeed, 1, 240).RoundToAsInt(1);
 
             list.Label("AA Turret - Ammo Count Value: " + WallShieldsSettings.ammoCount);
             WallShieldsSettings.ammoCount = list.Slider(WallShieldsSettings.ammoCount, 1, 20).RoundToAsInt(1);
+
+            list.Label("This is per shot, lots of turrets in a single area will likely result in a few droppods being destroyed/occupants heavily injured and the rest being fine.");
+
+            list.Label("AA Turret - Chance To Completely Destroy Droppod: " + WallShieldsSettings.chanceOfCompletelyDestroyingDropPod);
+            WallShieldsSettings.chanceOfCompletelyDestroyingDropPod = list.Slider(WallShieldsSettings.chanceOfCompletelyDestroyingDropPod, 0, 100).RoundToAsInt(1);
+
+            list.Label("AA Turret - Damage to Droppod Occupant Per Hit: " + WallShieldsSettings.bulletDamage);
+            WallShieldsSettings.bulletDamage = list.Slider(WallShieldsSettings.bulletDamage, 1, 100).RoundToAsInt(1);
+
+            list.Label("AA Turret - Max Amount Of Hits To A Droppod Occupant (between 1 and this value) : " + WallShieldsSettings.maxShotsAtDropPodOccupant);
+            WallShieldsSettings.maxShotsAtDropPodOccupant = list.Slider(WallShieldsSettings.maxShotsAtDropPodOccupant, 1, 100).RoundToAsInt(1);
 
             list.End();
         }

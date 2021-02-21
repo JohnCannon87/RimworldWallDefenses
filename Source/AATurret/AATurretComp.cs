@@ -60,55 +60,99 @@ namespace WallShields
         }
 
         private void ShootThings()
-        {
-            if (ammoRemaining > 0)
+        {            
+            if (ammoRemaining <= 0)
             {
-                List<Thing> targets = new List<Thing>();
-                targets.AddRange(GetOffensiveDroppods());
-                targets.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.ShipChunkIncoming));
-                targets.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.CrashedShipPartIncoming));
-                targets.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DefoliatorShipPart));
-                targets.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.PsychicDronerShipPart));
+                return;
+            }
 
-                if (targets != null)
+            List<Thing> targets = GetTargets();
+
+            List<Thing> targetsInRange = targets.Where<Thing>(t => t.Position.InHorDistOf(this.parent.Position, this.range)).ToList();
+
+            List<Thing> targetsToShootAt = targetsInRange.Shuffle().Take(Math.Max(ammoRemaining, targetsInRange.Count())).ToList();
+
+            foreach (Thing thing in targetsToShootAt)
+            {
+                if (IsThingNotDropPod(thing) || ShouldDestroyDropPod())
                 {
-                    IEnumerable<Thing> targetsInRange = targets.Where<Thing>(t => t.Position.InHorDistOf(this.parent.Position, this.range));
+                    DestroyThing(thing);
+                }
+                else
+                {
+                    DamageDropPod((DropPodIncoming)thing);
+                }
+            }
 
-                    foreach (Thing target in targetsInRange)
-                    {
-                        HitSoundDef.PlayOneShot((SoundInfo)new TargetInfo(this.parent.Position, this.parent.Map, false));
-                        GenExplosion.DoExplosion(target.Position, this.parent.Map, 1, DamageDefOf.Bomb, target);
-                        HitSoundDef.PlayOneShot((SoundInfo)new TargetInfo(this.parent.Position, this.parent.Map, false));
-                        top.CurRotation = (target.Position.ToVector3Shifted() - this.parent.DrawPos).AngleFlat();
-                        top.ticksUntilIdleTurn = Rand.RangeInclusive(150, 350);
+            ammoRemaining = Math.Max(ammoRemaining - targetsToShootAt.Count(), 0);
+            tickCount = 0;
+        }
 
-                        target.Destroy(DestroyMode.Vanish);
-                        ammoRemaining--;
-                        if (ammoRemaining <= 0)
-                        {
-                            tickCount = 0;
-                            break;
-                        }
-                    }
-                    tickCount = 0;
+        private bool ShouldDestroyDropPod()
+        {
+            return Rand.RangeInclusive(0, 100) <= WallShieldsSettings.chanceOfCompletelyDestroyingDropPod;
+        }
+
+        private bool IsThingNotDropPod(Thing thing)
+        {
+            return !(thing is DropPodIncoming);
+        }
+
+        private void DestroyThing(Thing thing)
+        {
+            MakeShrapnelPlaySoundAndAimAtTarget(thing, 3);
+            if (!thing.Destroyed)
+            {
+                thing.Destroy(DestroyMode.Vanish);
+            }            
+        }
+
+        private void DamageDropPod(DropPodIncoming pod)
+        {
+            if (pod.Contents.innerContainer.Any((Thing t) => t.Faction.HostileTo(Faction.OfPlayer)))
+            {
+                MakeShrapnelPlaySoundAndAimAtTarget(pod, 1);
+                int i = 0;
+                foreach (Thing occupant in pod.Contents.innerContainer)
+                {
+                    InjureOccupant(occupant);
                 }
             }
         }
 
-        private IEnumerable<Thing> GetOffensiveDroppods()
+        private void MakeShrapnelPlaySoundAndAimAtTarget(Thing target, int shrapnelCount)
+        {
+            SkyfallerShrapnelUtility.MakeShrapnel(target.Position, target.Map, Rand.RangeInclusive(0, 360), target.def.skyfaller.shrapnelDistanceFactor, shrapnelCount, 0, spawnMotes: true);
+            HitSoundDef.PlayOneShot((SoundInfo)new TargetInfo(this.parent.Position, this.parent.Map, false));
+            top.CurRotation = (target.Position.ToVector3Shifted() - this.parent.DrawPos).AngleFlat();
+            top.ticksUntilIdleTurn = Rand.RangeInclusive(150, 350);
+        }
+
+        private List<Thing> GetTargets()
         {
             List<Thing> result = new List<Thing>();
 
-            List<Thing> dropPods = this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DropPodIncoming);
-
-            foreach (DropPodIncoming pod in dropPods)
-            {
-                if(pod.Contents.innerContainer.Any((Thing x) => x.Faction.HostileTo(Faction.OfPlayer))){
-                    result.Add(pod);
-                }
-            }
+            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DropPodIncoming));
+            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.ShipChunkIncoming));
+            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.CrashedShipPartIncoming));
+            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DefoliatorShipPart));
+            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.PsychicDronerShipPart));
 
             return result;
+        }
+
+        private void InjureOccupant(Thing t)
+        {
+            if (t != null && !t.Destroyed && t.Faction.HostileTo(Faction.OfPlayer))
+            {
+                for (int i = 0; i < Rand.RangeInclusive(1, WallShieldsSettings.maxShotsAtDropPodOccupant); i++)
+                {
+                    if (!t.Destroyed)
+                    {
+                        t.TakeDamage(new DamageInfo(DamageDefOf.Bullet, WallShieldsSettings.bulletDamage));
+                    }
+                }
+            }
         }
 
         private void Reload()
@@ -127,17 +171,8 @@ namespace WallShields
 
         private bool IsActive()
         {
-            bool isActive = this.parent.Spawned && this.PowerOn && IsThereAThreat();
+            bool isActive = this.parent.Spawned && this.PowerOn;
             return isActive;
-        }
-
-        private bool IsThereAThreat()
-        {
-            if (GenHostility.AnyHostileActiveThreatTo(parent.MapHeld, parent.Faction))
-            {
-                return true;
-            }
-            return false;
         }
     }
 }

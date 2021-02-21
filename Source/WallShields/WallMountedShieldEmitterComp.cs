@@ -80,7 +80,8 @@ namespace WallShields
                 SetPowerLevel(0);
                 return;
             }
-            this.ShieldThings();
+            ShieldThings();
+            SetPowerLevel();
         }
 
         private void DrawShieldField()
@@ -173,7 +174,7 @@ namespace WallShields
 
         private bool IsThereAThreat()
         {
-            if (GenHostility.AnyHostileActiveThreatTo(parent.MapHeld, parent.Faction))
+            if (GenHostility.AnyHostileActiveThreatToPlayer(parent.Map, true))
             {
                 return true;
             }
@@ -182,8 +183,6 @@ namespace WallShields
 
         private void ShieldThings()
         {
-            SetPowerLevel();
-
             foreach (IntVec3 cell in shieldEdgeCells)
             {
                 BlockProjectiles(cell);
@@ -256,7 +255,6 @@ namespace WallShields
                 return;
             }
             List<Thing> things = this.parent.Map.thingGrid.ThingsListAt(cell);
-            List<Thing> thingsToDestroy = new List<Thing>();
             for (int i = 0, l = things.Count(); i < l; i++)
             {
                 Thing thing = things[i];
@@ -269,35 +267,19 @@ namespace WallShields
 
                         if (wantToIntercept)
                         {
-                            //Detect proper collision using angles
-                            Quaternion targetAngle = projectile.ExactRotation;
-
-                            Vector3 projectilePosition2D = projectile.ExactPosition;
-                            projectilePosition2D.y = 0;
-
-                            Vector3 shieldPosition2D = this.parent.Position.ToVector3();
-                            shieldPosition2D.y = 0;
-
-                            Quaternion shieldProjAng = Quaternion.LookRotation(projectilePosition2D - shieldPosition2D);
-
-
-                            if ((Quaternion.Angle(targetAngle, shieldProjAng) > 90))
+                            if (!projectile.Destroyed)
                             {
-                                MoteMaker.ThrowMicroSparks(projectile.ExactPosition, this.parent.Map);
-                                MoteMaker.ThrowSmoke(projectile.ExactPosition, this.parent.Map, 1.5f);
-                                MoteMaker.ThrowLightningGlow(projectile.ExactPosition, this.parent.Map, 1.5f);
-                                HitSoundDef.PlayOneShot((SoundInfo)new TargetInfo(this.parent.Position, this.parent.Map, false));
-
-                                thingsToDestroy.Add(projectile);
+                                projectile.Destroy();
                             }
+
+                            MoteMaker.ThrowMicroSparks(projectile.ExactPosition, this.parent.Map);
+                            MoteMaker.ThrowSmoke(projectile.ExactPosition, this.parent.Map, 1.5f);
+                            MoteMaker.ThrowLightningGlow(projectile.ExactPosition, this.parent.Map, 1.5f);
+                            HitSoundDef.PlayOneShot((SoundInfo)new TargetInfo(this.parent.Position, this.parent.Map, false));
+
                         }
                     }
                 }
-            }
-
-            foreach (Thing currentThing in thingsToDestroy)
-            {
-                currentThing.Destroy();
             }
         }
 
