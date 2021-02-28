@@ -9,10 +9,10 @@ using Verse.Sound;
 
 namespace WallShields
 {
-    class WallMountedShieldEmitterComp : ThingComp
+    class WallMountedShieldEmitterComp : ThingComp, ICellBoolGiver
     {
 
-        private List<IntVec3> shieldEdgeCells;
+        private List<IntVec3> shieldedCells;
 
         private IntVec3 topCenter;
         private IntVec3 bottomCenter;
@@ -37,12 +37,24 @@ namespace WallShields
 
         private readonly int wattPerCell = WallShieldsSettings.shieldPowerPerCell;
 
+        private bool regionMode = false;
+        private Area selectedArea = null;
         public static readonly SoundDef HitSoundDef = SoundDef.Named("WallShield_Hit");
 
+        private List<Mesh> meshes = new List<Mesh>();
+        private static List<Vector3> verts = new List<Vector3>();
+        private static List<int> tris = new List<int>();
+        private static List<Color> colors = new List<Color>();
+        private Material material;
+        private int renderQueue = 3650;
 
         public override string CompInspectStringExtra()
         {
-            if(shieldEdgeCells == null)
+            if(regionMode && selectedArea == null)
+            {
+                return "No Shield Region Selected";
+            }
+            if(shieldedCells == null)
             {
                 return "Shield Inactive";
             }
@@ -91,6 +103,25 @@ namespace WallShields
                 return;
             }
 
+            if (regionMode && selectedArea != null)
+            {
+                if (this.parent.Map == Find.CurrentMap)
+                {
+                    for (int i = 0; i < meshes.Count; i++)
+                    {
+                        Graphics.DrawMesh(meshes[i], Vector3.zero, Quaternion.identity, material, 0);
+                    }
+                }                
+            }
+            else if(!regionMode)
+            {
+                DrawRectangle();
+            }
+
+        }
+
+        private void DrawRectangle()
+        {
             //Draw Top
             DrawShieldAtPointWithCubeMesh(topCenter, fieldWidth - shieldSize, shieldSize, shieldColor, ShaderDatabase.MetaOverlay);
 
@@ -150,9 +181,12 @@ namespace WallShields
         {
             get
             {
-                return -(float)Math.Pow(shieldEdgeCells.Count(), WallShieldsSettings.shieldCellExponent) * wattPerCell;
+                return -(float)Math.Pow(shieldedCells.Count(), WallShieldsSettings.shieldCellExponent) * wattPerCell;
             }
         }
+
+        public Color Color => shieldColor;
+
 
 
         private void SetPowerLevel()
@@ -183,7 +217,7 @@ namespace WallShields
 
         private void ShieldThings()
         {
-            foreach (IntVec3 cell in shieldEdgeCells)
+            foreach (IntVec3 cell in shieldedCells)
             {
                 BlockProjectiles(cell);
             }
@@ -191,8 +225,16 @@ namespace WallShields
 
         private void RefreshShieldCells()
         {
-            RefreshShieldEdgeCells();
-            RefreshShieldEdgeDrawCells();
+            if (regionMode && selectedArea != null)
+            {
+                RegenerateMesh();
+                shieldedCells = selectedArea.ActiveCells.ToList();
+            }
+            else
+            {
+                RefreshShieldEdgeCells();
+                RefreshShieldEdgeDrawCells();
+            }
         }
 
         private void RefreshShieldEdgeDrawCells()
@@ -203,7 +245,6 @@ namespace WallShields
             bottomCenter = new IntVec3(0, 0, -fieldHeight) + center;
             leftCenter =  new IntVec3(-fieldWidth, 0, 0) + center;
             rightCenter = new IntVec3(fieldWidth, 0, 0) + center;
-
 
             bottomLeft = new IntVec3(-fieldWidth, 0, -fieldHeight) + center;
             topLeft = new IntVec3(-fieldWidth, 0, fieldHeight) + center;
@@ -244,7 +285,7 @@ namespace WallShields
                 result.Add(cell);
             }
 
-            shieldEdgeCells = result;
+            shieldedCells = result;
         }
 
         private void BlockProjectiles(IntVec3 cell)
@@ -302,39 +343,83 @@ namespace WallShields
 
         public override IEnumerable<Gizmo> CompGetGizmosExtra()
         {
+            if (regionMode)
             {
-                Command_Action act = new Command_Action();
-                act.action = () => this.IncreaseFieldWidth();
-                act.defaultLabel = "Increase Field Width";
-                act.activateSound = SoundDef.Named("Click");
-                act.icon = ContentFinder<Texture2D>.Get("UI/IncField", true);
-                yield return act;
+                {
+                    Command_Action act = new Command_Action();
+                    act.action = () => this.SwapMode();
+                    act.defaultLabel = "Swap To Rect Mode";
+                    act.activateSound = SoundDef.Named("Click");
+                    act.icon = ContentFinder<Texture2D>.Get("UI/RectangleMode", true);
+                    yield return act;
+                }
+                {
+                    Command_Action act = new Command_Action();
+                    act.action = () => this.SelectRegion();
+                    act.defaultLabel = "Select Region To Shield";
+                    act.activateSound = SoundDef.Named("Click");
+                    act.icon = ContentFinder<Texture2D>.Get("UI/SelectRegion", true);
+                    yield return act;
+                }
             }
+            else
             {
-                Command_Action act = new Command_Action();
-                act.action = () => this.DecreaseFieldWidth();
-                act.defaultLabel = "Decrease Field Width";
-                act.activateSound = SoundDef.Named("Click");
-                act.icon = ContentFinder<Texture2D>.Get("UI/DecField", true);
-                yield return act;
+                {
+                    Command_Action act = new Command_Action();
+                    act.action = () => this.SwapMode();
+                    act.defaultLabel = "Swap To Region Mode";
+                    act.activateSound = SoundDef.Named("Click");
+                    act.icon = ContentFinder<Texture2D>.Get("UI/RegionMode", true);
+                    yield return act;
+                }
+                {
+                    Command_Action act = new Command_Action();
+                    act.action = () => this.DecreaseFieldWidth();
+                    act.defaultLabel = "Decrease Field Width";
+                    act.activateSound = SoundDef.Named("Click");
+                    act.icon = ContentFinder<Texture2D>.Get("UI/DecWidth", true);
+                    yield return act;
+                }
+                {
+                    Command_Action act = new Command_Action();
+                    act.action = () => this.IncreaseFieldWidth();
+                    act.defaultLabel = "Increase Field Width";
+                    act.activateSound = SoundDef.Named("Click");
+                    act.icon = ContentFinder<Texture2D>.Get("UI/IncWidth", true);
+                    yield return act;
+                }
+                {
+                    Command_Action act = new Command_Action();
+                    act.action = () => this.DecreaseFieldHeight();
+                    act.defaultLabel = "Decrease Field Height";
+                    act.activateSound = SoundDef.Named("Click");
+                    act.icon = ContentFinder<Texture2D>.Get("UI/DecHeight", true);
+                    yield return act;
+                }
+                {
+                    Command_Action act = new Command_Action();
+                    act.action = () => this.IncreaseFieldHeight();
+                    act.defaultLabel = "Increase Field Height";
+                    act.activateSound = SoundDef.Named("Click");
+                    act.icon = ContentFinder<Texture2D>.Get("UI/IncHeight", true);
+                    yield return act;
+                }
             }
-            {
-                Command_Action act = new Command_Action();
-                act.action = () => this.IncreaseFieldHeight();
-                act.defaultLabel = "Increase Field Height";
-                act.activateSound = SoundDef.Named("Click");
-                act.icon = ContentFinder<Texture2D>.Get("UI/IncFieldDay", true);
-                yield return act;
-            }
-            {
-                Command_Action act = new Command_Action();
-                act.action = () => this.DecreaseFieldHeight();
-                act.defaultLabel = "Decrease Field Height";
-                act.activateSound = SoundDef.Named("Click");
-                act.icon = ContentFinder<Texture2D>.Get("UI/DecFieldDay", true);
-                yield return act;
-            }
+        }
 
+        private void SelectRegion()
+        {
+            AreaUtility.MakeAllowedAreaListFloatMenu(delegate (Area a)
+            {
+                selectedArea = a;
+                RefreshShieldCells();
+            }, addNullAreaOption: false, addManageOption: true, this.parent.Map);            
+        }
+
+        private void SwapMode()
+        {
+            regionMode = !regionMode;
+            RefreshShieldCells();
         }
 
         private void IncreaseFieldWidth()
@@ -372,6 +457,108 @@ namespace WallShields
         {
             Scribe_Values.Look(ref fieldWidth, "fieldWidth");
             Scribe_Values.Look(ref fieldHeight, "fieldHeight");
+            Scribe_Values.Look(ref selectedArea, "selectedArea");
+            Scribe_Values.Look(ref regionMode, "regionMode");
+        }
+
+        public void RegenerateMesh()
+        {
+            for (int i = 0; i < meshes.Count; i++)
+            {
+                meshes[i].Clear();
+            }
+            int num = 0;
+            int num2 = 0;
+            if (meshes.Count < num + 1)
+            {
+                Mesh mesh = new Mesh();
+                mesh.name = "CellBoolDrawer";
+                meshes.Add(mesh);
+            }
+            Mesh mesh2 = meshes[num];
+            CellRect cellRect = new CellRect(0, 0, this.parent.Map.Size.x, this.parent.Map.Size.z);
+            float y = AltitudeLayer.MapDataOverlay.AltitudeFor();
+            bool careAboutVertexColors = false;
+            for (int j = cellRect.minX; j <= cellRect.maxX; j++)
+            {
+                for (int k = cellRect.minZ; k <= cellRect.maxZ; k++)
+                {
+                    int arg = CellIndicesUtility.CellToIndex(j, k, this.parent.Map.Size.x);
+                    if (!GetCellBool(arg))
+                    {
+                        continue;
+                    }
+                    verts.Add(new Vector3(j, y, k));
+                    verts.Add(new Vector3(j, y, k + 1));
+                    verts.Add(new Vector3(j + 1, y, k + 1));
+                    verts.Add(new Vector3(j + 1, y, k));
+                    Color color = GetCellExtraColor(arg);
+                    colors.Add(color);
+                    colors.Add(color);
+                    colors.Add(color);
+                    colors.Add(color);
+                    if (color != Color.white)
+                    {
+                        careAboutVertexColors = true;
+                    }
+                    int count = verts.Count;
+                    tris.Add(count - 4);
+                    tris.Add(count - 3);
+                    tris.Add(count - 2);
+                    tris.Add(count - 4);
+                    tris.Add(count - 2);
+                    tris.Add(count - 1);
+                    num2++;
+                    if (num2 >= 16383)
+                    {
+                        FinalizeWorkingDataIntoMesh(mesh2);
+                        num++;
+                        if (meshes.Count < num + 1)
+                        {
+                            Mesh mesh3 = new Mesh();
+                            mesh3.name = "CellBoolDrawer";
+                            meshes.Add(mesh3);
+                        }
+                        mesh2 = meshes[num];
+                        num2 = 0;
+                    }
+                }
+            }
+            FinalizeWorkingDataIntoMesh(mesh2);
+            CreateMaterialIfNeeded(careAboutVertexColors);
+        }
+
+        private void FinalizeWorkingDataIntoMesh(Mesh mesh)
+        {
+            if (verts.Count > 0)
+            {
+                mesh.SetVertices(verts);
+                verts.Clear();
+                mesh.SetTriangles(tris, 0);
+                tris.Clear();
+                mesh.SetColors(colors);
+                colors.Clear();
+            }
+        }
+
+        private void CreateMaterialIfNeeded(bool careAboutVertexColors)
+        {
+            if (material == null)
+            {
+                Color color = Color;
+                material = SolidColorMaterials.NewSolidColorMaterial(shieldColor, ShaderDatabase.MetaOverlay);
+                material.renderQueue = renderQueue;
+            }
+        }
+
+        public bool GetCellBool(int index)
+        {
+            return ((ICellBoolGiver)selectedArea).GetCellBool(index);
+        }
+
+        public Color GetCellExtraColor(int index)
+        {
+            return ((ICellBoolGiver)selectedArea).GetCellExtraColor(index);
         }
     }
 }

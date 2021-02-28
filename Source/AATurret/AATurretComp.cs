@@ -116,7 +116,6 @@ namespace WallShields
             if (IsPodAThreat(pod))
             {
                 MakeShrapnelPlaySoundAndAimAtTarget(pod, 1);
-                int i = 0;
                 foreach (Thing occupant in pod.Contents.innerContainer)
                 {
                     InjureOccupant(occupant);
