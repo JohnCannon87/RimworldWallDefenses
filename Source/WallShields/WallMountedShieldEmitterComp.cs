@@ -9,7 +9,7 @@ using Verse.Sound;
 
 namespace WallShields
 {
-    class WallMountedShieldEmitterComp : ThingComp, ICellBoolGiver
+    class WallMountedShieldEmitterComp : ThingComp
     {
 
         private List<IntVec3> shieldedCells;
@@ -39,6 +39,7 @@ namespace WallShields
 
         private bool regionMode = false;
         private Area selectedArea = null;
+        private String selectedAreaString = null;
         public static readonly SoundDef HitSoundDef = SoundDef.Named("WallShield_Hit");
 
         private List<Mesh> meshes = new List<Mesh>();
@@ -47,17 +48,24 @@ namespace WallShields
         private static List<Color> colors = new List<Color>();
         private Material material;
         private int renderQueue = 3650;
+        private bool dirtyMesh = true;
 
         public override string CompInspectStringExtra()
         {
-            if(regionMode && selectedArea == null)
+            if (regionMode)
             {
-                return "No Shield Region Selected";
+                if (selectedArea == null)
+                {
+                    return "No Shield Region Selected";
+                }
+                return "Power when active: " + PowerUsage + " W";
             }
+            
             if(shieldedCells == null)
             {
                 return "Shield Inactive";
             }
+
             return "Shield Width: " + fieldWidth + 
                 "\n" + 
                 "Shield Height: " + fieldHeight +
@@ -73,6 +81,10 @@ namespace WallShields
 
         public override void PostSpawnSetup(bool respawningAfterLoad)
         {
+            if (respawningAfterLoad && selectedAreaString != null)
+            {
+                selectedArea = this.parent.Map.areaManager.GetLabeled(selectedAreaString);
+            }
             RefreshShieldCells(); 
         }
 
@@ -105,6 +117,10 @@ namespace WallShields
 
             if (regionMode && selectedArea != null)
             {
+                if (dirtyMesh)
+                {
+                    RegenerateMesh();
+                }
                 if (this.parent.Map == Find.CurrentMap)
                 {
                     for (int i = 0; i < meshes.Count; i++)
@@ -227,7 +243,7 @@ namespace WallShields
         {
             if (regionMode && selectedArea != null)
             {
-                RegenerateMesh();
+                dirtyMesh = true;
                 shieldedCells = selectedArea.ActiveCells.ToList();
             }
             else
@@ -412,6 +428,7 @@ namespace WallShields
             AreaUtility.MakeAllowedAreaListFloatMenu(delegate (Area a)
             {
                 selectedArea = a;
+                selectedAreaString = selectedArea.Label;
                 RefreshShieldCells();
             }, addNullAreaOption: false, addManageOption: true, this.parent.Map);            
         }
@@ -457,8 +474,8 @@ namespace WallShields
         {
             Scribe_Values.Look(ref fieldWidth, "fieldWidth");
             Scribe_Values.Look(ref fieldHeight, "fieldHeight");
-            Scribe_Values.Look(ref selectedArea, "selectedArea");
-            Scribe_Values.Look(ref regionMode, "regionMode");
+            Scribe_Values.Look(ref selectedAreaString, "selectedAreaString");
+            Scribe_Values.Look(ref regionMode, "regionMode");            
         }
 
         public void RegenerateMesh()
@@ -526,6 +543,7 @@ namespace WallShields
             }
             FinalizeWorkingDataIntoMesh(mesh2);
             CreateMaterialIfNeeded(careAboutVertexColors);
+            dirtyMesh = false;
         }
 
         private void FinalizeWorkingDataIntoMesh(Mesh mesh)
