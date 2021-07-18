@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+
+	<ResearchTabDef>
+		<defName>WallStuffTab</defName>
+		<label>WallStuff</label>
+	</ResearchTabDef>
+
+	<ResearchProjectDef>
+		<tab>WallStuffTab</tab>
+		<defName>WallShield</defName>
+		<label>Wall Shield</label>
+		<description>Wall Mounted Shield to defend a rectangular area.</description>
+		<baseCost>8000</baseCost>
+		<techLevel>Spacer</techLevel>
+    	<requiredResearchBuilding>HiTechResearchBench</requiredResearchBuilding>
+		<requiredResearchFacilities>
+			<li>MultiAnalyzer</li>
+		</requiredResearchFacilities>
+    	<prerequisites>
+			<li>AdvancedFabrication</li>
+		</prerequisites>
+		<researchViewX>0</researchViewX>
+		<researchViewY>1</researchViewY>
+	</ResearchProjectDef>
+
+	<ResearchProjectDef>
+		<tab>WallStuffTab</tab>
+		<defName>AATurret</defName>
+		<label>Anti-Air Targetting</label>
+		<description>Wall Mounted AA Turret to shoot down incoming orbital objects.</description>
+		<baseCost>4000</baseCost>
+		<techLevel>Spacer</techLevel>
+    	<requiredResearchBuilding>HiTechResearchBench</requiredResearchBuilding>
+		<prerequisites>
+			<li>GunTurrets</li>
+			<li>MultibarrelWeapons</li>
+		</prerequisites>
+		<researchViewX>0</researchViewX>
+		<researchViewY>2</researchViewY>
+	</ResearchProjectDef>
+
+</Defs>

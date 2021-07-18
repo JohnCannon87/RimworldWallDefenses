@@ -1,0 +1,53 @@
+<Defs>
+
+    <SoundDef>
+        <defName>WallShield_Hit</defName>
+        <context>MapOnly</context>
+        <eventNames/>
+        <maxSimultaneous>3</maxSimultaneous>
+        <subSounds>
+            <li>
+                <grains>
+                    <li Class="AudioGrain_Folder">
+                        <clipFolderPath>ShieldHit</clipFolderPath>
+                    </li>
+                </grains>
+                <volumeRange>
+                    <min>30</min>
+                    <max>30</max>
+                </volumeRange>
+                <pitchRange>
+                    <min>0.9082353</min>
+                    <max>1.045882</max>
+                </pitchRange>
+                <sustainLoop>False</sustainLoop>
+            </li>
+        </subSounds>
+    </SoundDef>
+    
+    <SoundDef>
+        <defName>AAGun_Fire</defName>
+        <context>MapOnly</context>
+        <eventNames/>
+        <maxSimultaneous>5</maxSimultaneous>
+        <subSounds>
+            <li>
+                <grains>
+                    <li Class="AudioGrain_Folder">
+                        <clipFolderPath>AAGunFire</clipFolderPath>
+                    </li>
+                </grains>
+                <volumeRange>
+                    <min>2080</min>
+                    <max>2080</max>
+                </volumeRange>
+                <pitchRange>
+                    <min>0.9082353</min>
+                    <max>1.045882</max>
+                </pitchRange>
+                <sustainLoop>False</sustainLoop>
+            </li>
+        </subSounds>
+    </SoundDef>
+
+</Defs>
