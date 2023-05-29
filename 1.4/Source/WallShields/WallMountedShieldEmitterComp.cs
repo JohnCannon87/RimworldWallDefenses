@@ -49,6 +49,8 @@ namespace WallShields
         private Material material;
         private int renderQueue = 3650;
         private bool dirtyMesh = true;
+        private int shieldActiveTimer = 0;
+        private int shieldDelayTicks = 7500;
 
         public override string CompInspectStringExtra()
         {
@@ -99,6 +101,7 @@ namespace WallShields
 
         public override void CompTick()
         {
+            shieldActiveTimer++;
             if (!IsActive())
             {
                 SetPowerLevel(0);
@@ -218,6 +221,15 @@ namespace WallShields
         private bool IsActive()
         {
             bool isActive = this.parent.Spawned && this.PowerOn && IsThereAThreat();
+            if (isActive)
+            {
+                shieldActiveTimer = 0;
+            }
+            else
+            {
+                return !(shieldActiveTimer > shieldDelayTicks);
+            }
+
             return isActive;
         }
 
