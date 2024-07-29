@@ -11,6 +11,9 @@ namespace WallShields
     {
         internal static int shieldPowerPerCell = 1;
         internal static int shieldCellExponent = 2;
+        internal static int laserPowerPerCell = 1;
+        internal static int laserGridExponent = 2;
+        internal static int maxLaserGridDistance = 5;
         internal static int protectionRange = 55;
         internal static int reloadSpeed = 120;
         internal static int ammoCount = 2;
@@ -24,6 +27,10 @@ namespace WallShields
 
             Scribe_Values.Look(ref shieldPowerPerCell, "shieldPowerPerCell");
             Scribe_Values.Look(ref shieldCellExponent, "shieldCellExponent");
+
+            Scribe_Values.Look(ref laserPowerPerCell, "laserPowerPerCell");
+            Scribe_Values.Look(ref laserGridExponent, "laserGridExponent");
+            Scribe_Values.Look(ref maxLaserGridDistance, "maxLaserGridDistance");
 
             Scribe_Values.Look(ref protectionRange, "protectionRange");
             Scribe_Values.Look(ref reloadSpeed, "reloadSpeed");

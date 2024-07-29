@@ -92,6 +92,10 @@
     <Compile Include="HarmonyPatches.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="LaserGrid\CompProperties_LaserGridEmitterComp.cs" />
+    <Compile Include="LaserGrid\LaserGridEmitterComp.cs" />
+    <Compile Include="LaserGrid\LaserGridUtils.cs" />
+    <Compile Include="LaserGrid\PlaceWorker_LaserEmitterNeedsReflector.cs" />
     <Compile Include="WallShieldsMod.cs" />
     <Compile Include="WallShieldsSettings.cs" />
     <Compile Include="ResourceBank.cs" />

@@ -37,6 +37,17 @@ namespace WallShields
 
             list.Begin(rect);
 
+            list.Label("Laser Grid - Max Distane Between Emitter and Reflector: " + WallShieldsSettings.maxLaserGridDistance);
+            WallShieldsSettings.maxLaserGridDistance = list.Slider(WallShieldsSettings.maxLaserGridDistance, 0, 100).RoundToAsInt(1);
+
+            list.Label("Laser Grid - Power Per Cell Covered: " + WallShieldsSettings.laserPowerPerCell);
+            WallShieldsSettings.laserPowerPerCell = list.Slider(WallShieldsSettings.laserPowerPerCell, 0, 100).RoundToAsInt(1);
+
+            list.Label("Laser Grid - Cell Exponent Multiplication Value: " + WallShieldsSettings.laserGridExponent);
+            WallShieldsSettings.laserGridExponent = list.Slider(WallShieldsSettings.laserGridExponent, 1, 20).RoundToAsInt(1);
+
+            list.Label("Laser Grid total power calculation is ('Cells Covered' ^ 'Cell Exponent') * power per cell");
+
             list.Label("Shield - Power Per Cell Covered: " + WallShieldsSettings.shieldPowerPerCell);
             WallShieldsSettings.shieldPowerPerCell = list.Slider(WallShieldsSettings.shieldPowerPerCell, 0, 100).RoundToAsInt(1);
 
