@@ -20,6 +20,8 @@ namespace WallShields
         internal static int maxShotsAtDropPodOccupant = 3;
         internal static float bulletDamage = 10;
         internal static int chanceOfCompletelyDestroyingDropPod = 100;
+        internal static int laserCannonDrain = 20;
+        internal static float laserCannonDamage = 10f;
 
         public override void ExposeData()
         {
@@ -38,6 +40,8 @@ namespace WallShields
             Scribe_Values.Look(ref chanceOfCompletelyDestroyingDropPod, "chanceOfCompletelyDestroyingDropPod");
             Scribe_Values.Look(ref bulletDamage, "bulletDamage");
             Scribe_Values.Look(ref maxShotsAtDropPodOccupant, "maxShotsAtDropPodOccupant");
+            Scribe_Values.Look(ref laserCannonDrain, "laserCannonDrain");
+            Scribe_Values.Look(ref laserCannonDamage, "laserCannonDamage");
 
         }
     }

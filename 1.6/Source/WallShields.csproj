@@ -100,6 +100,9 @@
     <Compile Include="WallShields\GraphicsUtil.cs" />
     <Compile Include="WallShields\WallMountedShieldEmitterComp.cs" />
     <Compile Include="EnumerableExtensions.cs" />
+    <Compile Include="WallTurret\Building_WallTurret.cs" />
+    <Compile Include="WallTurret\PlaceWorker_ShowBeamTurretRadius.cs" />
+    <Compile Include="WallTurret\Verb_Shoot_UsesEnergy.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
@@ -119,7 +122,7 @@
   </PropertyGroup>
   <ProjectExtensions>
     <VisualStudio>
-      <UserProperties BuildVersion_StartDate="2000/1/1" BuildVersion_BuildVersioningStyle="None.None.Increment.TimeStamp" BuildVersion_UpdateAssemblyVersion="True" BuildVersion_UpdateFileVersion="True" />
+      <UserProperties BuildVersion_UpdateFileVersion="True" BuildVersion_UpdateAssemblyVersion="True" BuildVersion_BuildVersioningStyle="None.None.Increment.TimeStamp" BuildVersion_StartDate="2000/1/1" />
     </VisualStudio>
   </ProjectExtensions>
 </Project>
