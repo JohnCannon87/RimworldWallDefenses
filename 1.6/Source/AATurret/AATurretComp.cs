@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using RimWorld;
@@ -16,13 +17,22 @@ namespace WallShields
 
         public static readonly SoundDef HitSoundDef = SoundDef.Named("AAGun_Fire");
 
-        public CompProperties_AATurretComp AATurretComps
+        private static List<ThingDef> cachedSkyfallerDefs;
+        private static readonly Dictionary<ThingDef, bool> defHasContentsCache = new Dictionary<ThingDef, bool>();
+        static AATurretComp()
         {
-            get
-            {
-                return (CompProperties_AATurretComp)this.props;
-            }
+            CacheSkyfallerDefs();
         }
+
+        private static void CacheSkyfallerDefs()
+        {
+            cachedSkyfallerDefs = DefDatabase<ThingDef>.AllDefs
+                .Where(d => typeof(Skyfaller).IsAssignableFrom(d.thingClass))
+                .ToList();
+            Log.Message($"[AATurret] Cached {cachedSkyfallerDefs.Count} skyfaller defs: {string.Join(", ", cachedSkyfallerDefs.Select(d => d.defName))}");
+        }
+
+        public CompProperties_AATurretComp AATurretComps => (CompProperties_AATurretComp)this.props;
 
         public override void PostDraw()
         {
@@ -54,48 +64,178 @@ namespace WallShields
                 return;
             }
 
-            this.ShootThings();
+            ShootThings();
+
             if(tickCount >= WallShieldsSettings.reloadSpeed)
             {
                 tickCount = 0;
                 Reload();
             }
+
             top.TurretTopTick();
+        }
+        private List<Thing> GetTargets()
+        {
+            var result = new List<Thing>();
+
+            // Only iterate skyfaller defs once per tick
+            foreach (var def in cachedSkyfallerDefs)
+            {
+                foreach (var thing in this.parent.Map.listerThings.ThingsOfDef(def))
+                {
+                    if (IsThingAThreat(thing))
+                    {
+                        result.Add(thing);
+                    }
+                }
+            }
+
+            // Add non-skyfaller threats
+            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DefoliatorShipPart));
+            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.PsychicDronerShipPart));
+
+            return result;
+        }
+
+        private bool ThingDefHasContents(ThingDef def)
+        {
+            if (def == null) return false;
+            if (defHasContentsCache.TryGetValue(def, out bool cached)) return cached;
+
+            bool has = def.thingClass?.GetProperty("Contents", BindingFlags.Public | BindingFlags.Instance) != null
+                       || def.thingClass?.GetField("Contents", BindingFlags.Public | BindingFlags.Instance) != null;
+
+            defHasContentsCache[def] = has;
+            return has;
+        }
+
+        private bool ThingHasContents(Thing thing)
+        {
+            if (thing is DropPodIncoming) return true;
+            return ThingDefHasContents(thing.def);
+        }
+
+        private IEnumerable<Thing> GetInnerContainerThings(Thing thing)
+        {
+            if (thing is DropPodIncoming pod)
+                return pod.Contents?.innerContainer ?? Enumerable.Empty<Thing>();
+
+            try
+            {
+                var contentsProp = thing.GetType().GetProperty("Contents", BindingFlags.Public | BindingFlags.Instance);
+                if (contentsProp == null) return null;
+                var contentsObj = contentsProp.GetValue(thing);
+                if (contentsObj == null) return null;
+
+                var innerField = contentsObj.GetType().GetField("innerContainer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (innerField != null)
+                    return innerField.GetValue(contentsObj) as IEnumerable<Thing>;
+
+                var innerProp = contentsObj.GetType().GetProperty("innerContainer", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                if (innerProp != null)
+                    return innerProp.GetValue(contentsObj) as IEnumerable<Thing>;
+            }
+            catch (Exception ex)
+            {
+                Log.Message($"[AATurret] Reflection failed for {thing.def.defName}: {ex.Message}");
+            }
+
+            return null;
+        }
+        private bool IsThingAThreat(Thing thing)
+        {
+            if (ThingHasContents(thing))
+            {
+                var innerThings = GetInnerContainerThings(thing);
+                if (innerThings != null)
+                {
+                    return innerThings.Any(t => t.Faction != null && t.Faction.HostileTo(Faction.OfPlayer));
+                }
+                return true; // contents unknown → assume threat
+            }
+
+            return thing.Faction != null && thing.Faction.HostileTo(Faction.OfPlayer);
         }
 
         private void ShootThings()
-        {            
-            if (ammoRemaining <= 0)
-            {
-                return;
-            }
+        {
+            if (ammoRemaining <= 0) return;
 
             List<Thing> targets = GetTargets();
+            List<Thing> targetsInRange = targets.Where(t => t.Position.InHorDistOf(this.parent.Position, range)).ToList();
 
-            List<Thing> targetsInRange = targets.Where<Thing>(t => t.Position.InHorDistOf(this.parent.Position, this.range)).ToList();
-
-            List<Thing> targetsToShootAt = targetsInRange.Shuffle().Take(Math.Max(ammoRemaining, targetsInRange.Count())).Where(t => IsThingAThreateningDropPodOrNotADropPod(t)).ToList();
+            var targetsToShootAt = targetsInRange
+                .Shuffle()
+                .Take(Math.Max(ammoRemaining, targetsInRange.Count))
+                .ToList();
 
             foreach (Thing thing in targetsToShootAt)
             {
-                if (IsThingNotADropPod(thing) || ShouldDestroyDropPod())
+                bool hasContents = ThingHasContents(thing);
+
+                if (hasContents)
                 {
-                    DestroyThing(thing);
+                    if (ShouldDestroyDropPod())
+                        DestroyThing(thing);
+                    else
+                        DamageSkyfallerOrPod(thing);
                 }
                 else
                 {
-                    DamageDropPod((DropPodIncoming)thing);
+                    DestroyThing(thing); // always destroy non-pod skyfallers
                 }
             }
 
-            ammoRemaining = Math.Max(ammoRemaining - targetsToShootAt.Count(), 0);
+            ammoRemaining = Math.Max(ammoRemaining - targetsToShootAt.Count, 0);
             tickCount = 0;
         }
-
-        private bool IsThingAThreateningDropPodOrNotADropPod(Thing thing)
+                private void DamageSkyfallerOrPod(Thing thing)
         {
-            return !(thing is DropPodIncoming) || (thing is DropPodIncoming) && IsPodAThreat((DropPodIncoming)thing);
+            MakeShrapnelPlaySoundAndAimAtTarget(thing, 1);
+
+            var innerThings = GetInnerContainerThings(thing);
+            if (innerThings != null)
+            {
+                foreach (var occupant in innerThings)
+                {
+                    InjureOccupant(occupant);
+                }
+            }
         }
+
+        private void DestroyThing(Thing thing)
+        {
+            MakeShrapnelPlaySoundAndAimAtTarget(thing, 3);
+            if (!thing.Destroyed)
+                thing.Destroy(DestroyMode.Vanish);
+        }
+        private void InjureOccupant(Thing t)
+        {
+            if (t != null && !t.Destroyed && t.Faction.HostileTo(Faction.OfPlayer))
+            {
+                for (int i = 0; i < Rand.RangeInclusive(1, WallShieldsSettings.maxShotsAtDropPodOccupant); i++)
+                {
+                    if (!t.Destroyed)
+                        t.TakeDamage(new DamageInfo(DamageDefOf.Bullet, WallShieldsSettings.bulletDamage));
+                }
+            }
+        }
+        private void MakeShrapnelPlaySoundAndAimAtTarget(Thing target, int shrapnelCount)
+        {
+            SkyfallerShrapnelUtility.MakeShrapnel(
+                target.Position,
+                target.Map,
+                Rand.RangeInclusive(0, 360),
+                target.def.skyfaller.shrapnelDistanceFactor,
+                shrapnelCount,
+                0,
+                spawnMotes: true
+            );
+            HitSoundDef.PlayOneShot(new TargetInfo(parent.Position, parent.Map));
+            top.CurRotation = (target.Position.ToVector3Shifted() - parent.DrawPos).AngleFlat();
+            top.ticksUntilIdleTurn = Rand.RangeInclusive(150, 350);
+        }
+
         private bool ShouldDestroyDropPod()
         {
             return Rand.RangeInclusive(0, 100) <= WallShieldsSettings.chanceOfCompletelyDestroyingDropPod;
@@ -104,67 +244,6 @@ namespace WallShields
         private bool IsThingNotADropPod(Thing thing)
         {
             return !(thing is DropPodIncoming);
-        }
-
-        private void DestroyThing(Thing thing)
-        {
-            MakeShrapnelPlaySoundAndAimAtTarget(thing, 3);
-            if (!thing.Destroyed)
-            {
-                thing.Destroy(DestroyMode.Vanish);
-            }            
-        }
-
-        private void DamageDropPod(DropPodIncoming pod)
-        {
-            if (IsPodAThreat(pod))
-            {
-                MakeShrapnelPlaySoundAndAimAtTarget(pod, 1);
-                foreach (Thing occupant in pod.Contents.innerContainer)
-                {
-                    InjureOccupant(occupant);
-                }
-            }
-        }
-
-        private static bool IsPodAThreat(DropPodIncoming pod)
-        {
-            return pod.Contents.innerContainer.Any((Thing t) => t.Faction.HostileTo(Faction.OfPlayer));
-        }
-
-        private void MakeShrapnelPlaySoundAndAimAtTarget(Thing target, int shrapnelCount)
-        {
-            SkyfallerShrapnelUtility.MakeShrapnel(target.Position, target.Map, Rand.RangeInclusive(0, 360), target.def.skyfaller.shrapnelDistanceFactor, shrapnelCount, 0, spawnMotes: true);
-            HitSoundDef.PlayOneShot((SoundInfo)new TargetInfo(this.parent.Position, this.parent.Map, false));
-            top.CurRotation = (target.Position.ToVector3Shifted() - this.parent.DrawPos).AngleFlat();
-            top.ticksUntilIdleTurn = Rand.RangeInclusive(150, 350);
-        }
-
-        private List<Thing> GetTargets()
-        {
-            List<Thing> result = new List<Thing>();
-
-            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DropPodIncoming));
-            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.ShipChunkIncoming));
-            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.CrashedShipPartIncoming));
-            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DefoliatorShipPart));
-            result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.PsychicDronerShipPart));
-
-            return result;
-        }
-
-        private void InjureOccupant(Thing t)
-        {
-            if (t != null && !t.Destroyed && t.Faction.HostileTo(Faction.OfPlayer))
-            {
-                for (int i = 0; i < Rand.RangeInclusive(1, WallShieldsSettings.maxShotsAtDropPodOccupant); i++)
-                {
-                    if (!t.Destroyed)
-                    {
-                        t.TakeDamage(new DamageInfo(DamageDefOf.Bullet, WallShieldsSettings.bulletDamage));
-                    }
-                }
-            }
         }
 
         private void Reload()
