@@ -74,15 +74,20 @@ namespace WallShields
 
             top.TurretTopTick();
         }
+
         private List<Thing> GetTargets()
         {
             var result = new List<Thing>();
+            var shuttles = this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.ShuttleIncoming);
 
             // Only iterate skyfaller defs once per tick
             foreach (var def in cachedSkyfallerDefs)
             {
                 foreach (var thing in this.parent.Map.listerThings.ThingsOfDef(def))
-                {
+                { // Skip shuttle incoming things early
+                    if (thing.def.defName.IndexOf("shuttle", StringComparison.OrdinalIgnoreCase) >= 0)
+                        continue;
+
                     if (IsThingAThreat(thing))
                     {
                         result.Add(thing);
@@ -93,6 +98,8 @@ namespace WallShields
             // Add non-skyfaller threats
             result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.DefoliatorShipPart));
             result.AddRange(this.parent.Map.listerThings.ThingsOfDef(ThingDefOf.PsychicDronerShipPart));
+            result.RemoveAll(thing => shuttles.Contains(thing));
+
 
             return result;
         }
@@ -189,7 +196,8 @@ namespace WallShields
             ammoRemaining = Math.Max(ammoRemaining - targetsToShootAt.Count, 0);
             tickCount = 0;
         }
-                private void DamageSkyfallerOrPod(Thing thing)
+
+        private void DamageSkyfallerOrPod(Thing thing)
         {
             MakeShrapnelPlaySoundAndAimAtTarget(thing, 1);
 
