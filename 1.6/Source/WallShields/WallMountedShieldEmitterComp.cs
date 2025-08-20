@@ -101,6 +101,11 @@ namespace WallShields
 
         public override void CompTick()
         {
+            if (parent.Map == null || parent.MapHeld == null || parent.Spawned == false)
+            {
+                return; // Don't tick while minified or unspawned
+            }
+
             if (!IsActive())
             {
                 SetPowerLevel(0);
